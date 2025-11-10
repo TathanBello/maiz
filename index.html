@@ -3,125 +3,175 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ENMA Predict — ENMA 2025 (Dinámico)</title>
+  <title>ENMA Predict — Predicción Estación ENMA</title>
 
-  <!-- Chart.js y anime.js vía CDN (se usan si hay conexión). Si no, hay fallback interno. -->
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/animejs@4.2.0/lib/anime.min.js" defer></script>
 
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>ENMA Predict — Estación Meteorológica ENMA 2025</h1>
-    <p class="subtitle">Panel interactivo · Sensores · Predicción · Lenguajes → Autómata</p>
+  <!-- protección: si no hay usuario, vuelve al login -->
+  <script>
+    if (!localStorage.getItem("loggedUser")) {
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <header class="site-header">
+    <div class="header-left">
+      <h1>ENMA Predict</h1>
+      <p class="subtitle">Predicción Estación ENMA — Monitorización y alerta de sequías</p>
+    </div>
+
+    <div class="header-right">
+      <div id="welcome" class="welcome">👋</div>
+      <button id="logoutBtn" class="btn outlined small">Cerrar sesión</button>
+    </div>
   </header>
 
-  <main>
-    <!-- PANEL PRINCIPAL -->
-    <section class="grid">
-      <!-- PANEL DE SENSORES -->
-      <div class="card">
-        <div class="card-head">
-          <h2>Panel de Sensores (simulado)</h2>
-          <div class="chip">Modo: <span id="simMode">Local</span></div>
-        </div>
+  <main class="main-grid">
+    <!-- LEFT: Chart principal + resumen -->
+    <section class="panel charts-panel card">
+      <div class="panel-head">
+        <h2>Temperatura — Últimos valores</h2>
+        <p class="small muted">Datos simulados en tiempo real</p>
+      </div>
 
-        <div class="controls">
-          <label>Velocidad
+      <div class="chart-wrap">
+        <canvas id="chartTemp"></canvas>
+      </div>
+
+      <div class="small-metrics">
+        <div class="metric">
+          <div class="metric-title">Predicción 24h</div>
+          <div id="predTemp" class="metric-value">-- °C</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">Confianza</div>
+          <div id="predConf" class="metric-value">-- %</div>
+        </div>
+        <div class="metric">
+          <div class="metric-title">Riesgo sequía</div>
+          <div id="droughtRisk" class="metric-value">--</div>
+        </div>
+      </div>
+
+      <div class="summary card-small">
+        <h3 class="small muted">Resumen</h3>
+        <ul id="summaryList">
+          <li>Última actualización: --</li>
+          <li id="summaryHum">Humedad promedio: --</li>
+          <li id="summaryPrec">Precipitación acumulada (sim): -- mm</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- MIDDLE: sensores y controles -->
+    <section class="panel sensors-panel card">
+      <div class="panel-head">
+        <h2>Panel de Sensores</h2>
+        <p class="small muted">Lecturas simuladas y controles</p>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control-row">
+          <label>Velocidad (ms)
             <input id="speed" type="range" min="200" max="2000" value="800">
           </label>
           <label>Ruido
             <input id="noise" type="range" min="0" max="30" value="8">
           </label>
-          <button id="toggleSim">Iniciar</button>
-          <button id="resetSim">Reiniciar</button>
         </div>
 
-        <div class="meter-row">
-          <div class="meter">
-            <div class="meter-title">Temperatura (°C)</div>
-            <div class="meter-bar"><div id="barTemp" class="bar-inner"></div></div>
-            <div id="temp" class="meter-value">-- °C</div>
-          </div>
-
-          <div class="meter">
-            <div class="meter-title">Humedad (%)</div>
-            <div class="meter-bar"><div id="barHum" class="bar-inner"></div></div>
-            <div id="hum" class="meter-value">-- %</div>
-          </div>
-
-          <div class="meter">
-            <div class="meter-title">Precipitación (mm)</div>
-            <div class="meter-bar"><div id="barPrec" class="bar-inner"></div></div>
-            <div id="prec" class="meter-value">-- mm</div>
-          </div>
-        </div>
-
-        <div class="sensors-row">
-          <div class="small-card"><strong>Viento</strong><div id="wind">-- m/s</div></div>
-          <div class="small-card"><strong>Presión</strong><div id="press">-- hPa</div></div>
-          <div class="small-card"><strong>Alertas</strong><div id="alertsList">No hay alertas.</div></div>
+        <div class="buttons-row">
+          <button id="toggleSim" class="btn">Iniciar</button>
+          <button id="resetSim" class="btn ghost">Reiniciar</button>
         </div>
       </div>
 
-      <!-- PREDICCIÓN + GRÁFICO -->
-      <div class="card">
-        <h2>Predicción (ARIMA — simulación)</h2>
-        <p class="small">Proyección simple basada en lecturas (suavizado exponencial). En producción usar ARIMA real con Python/R.</p>
-        <canvas id="chartTemp" height="160"></canvas>
-        <div class="prediction-box">
-          <div><strong>Predicción 24h:</strong> <span id="predTemp">-- °C</span></div>
-          <div><strong>Confianza:</strong> <span id="predConf">-- %</span></div>
+      <div class="meters">
+        <div class="meter">
+          <div class="meter-title">Temperatura</div>
+          <div class="meter-value-big" id="temp">-- °C</div>
+          <div class="meter-bar"><div id="barTemp" class="bar-inner"></div></div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-title">Humedad</div>
+          <div class="meter-value-big" id="hum">-- %</div>
+          <div class="meter-bar"><div id="barHum" class="bar-inner"></div></div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-title">Precipitación</div>
+          <div class="meter-value-big" id="prec">-- mm</div>
+          <div class="meter-bar"><div id="barPrec" class="bar-inner"></div></div>
         </div>
       </div>
 
-      <!-- AUTÓMATAS -->
-      <div class="card">
-        <h2>Lenguajes y Autómatas (práctico)</h2>
-        <p class="small">Introduce valores o use las lecturas actuales. Se genera una secuencia sobre <code>{t,h,r,x}</code> y se analiza con DFA.</p>
-
-        <div class="form-grid">
-          <label>Temperatura<input id="inputTemp" type="number" step="0.1" value="23"></label>
-          <label>Humedad<input id="inputHum" type="number" step="0.1" value="55"></label>
-          <label>Precipitación<input id="inputPrec" type="number" step="0.1" value="0"></label>
-          <label>Viento<input id="inputWind" type="number" step="0.1" value="2.5"></label>
-          <label>Presión<input id="inputPress" type="number" step="0.1" value="1013"></label>
-        </div>
-
-        <div class="form-actions">
-          <button id="analyzeBtn">Analizar</button>
-          <button id="fromSensorsBtn">Usar lecturas actuales</button>
-        </div>
-
-        <div class="result-block">
-          <div><strong>Secuencia:</strong> <span id="generatedSeq">--</span></div>
-          <div><strong>Resultado:</strong> <span id="dfaResult">--</span></div>
-          <div id="dfaExplain" class="small"></div>
-        </div>
-
-        <h3>Autómata finito — visual</h3>
-        <div class="dfa-wrap">
-          <svg id="dfaSvg" viewBox="0 0 600 140" class="dfa">
-            <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#333"/></marker></defs>
-
-            <g id="s_q0" class="state"><circle cx="60" cy="70" r="28"/><text x="60" y="75" text-anchor="middle">q0</text></g>
-            <g id="s_q1" class="state"><circle cx="220" cy="70" r="28"/><text x="220" y="75" text-anchor="middle">q1</text></g>
-            <g id="s_q2" class="state"><circle cx="380" cy="70" r="28"/><text x="380" y="75" text-anchor="middle">q2</text></g>
-            <g id="s_qacc" class="state accept"><circle cx="520" cy="70" r="32"/><text x="520" y="75" text-anchor="middle">q_accept</text></g>
-
-            <line x1="88" y1="70" x2="192" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/><text x="140" y="60" text-anchor="middle">t</text>
-            <line x1="248" y1="70" x2="352" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/><text x="300" y="60" text-anchor="middle">t</text>
-            <line x1="408" y1="70" x2="488" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/><text x="448" y="60" text-anchor="middle">h</text>
-          </svg>
-        </div>
-
+      <div class="sensors-row">
+        <div class="small-card"><strong>Viento</strong><div id="wind">-- m/s</div></div>
+        <div class="small-card"><strong>Presión</strong><div id="press">-- hPa</div></div>
+        <div class="small-card"><strong>Alertas</strong><div id="alertsList">No hay alertas.</div></div>
       </div>
     </section>
+
+    <!-- RIGHT: Autómata y análisis -->
+    <aside class="panel automata-panel card">
+      <div class="panel-head">
+        <h2>Autómata Finito (DFA)</h2>
+        <p class="small muted">Genera secuencia desde lecturas y analiza patrón <code>t then h</code></p>
+      </div>
+
+      <div class="form-grid">
+        <label>Temperatura<input id="inputTemp" type="number" step="0.1" value="23"></label>
+        <label>Humedad<input id="inputHum" type="number" step="0.1" value="55"></label>
+        <label>Precipitación<input id="inputPrec" type="number" step="0.1" value="0"></label>
+        <label>Viento<input id="inputWind" type="number" step="0.1" value="2.5"></label>
+        <label>Presión<input id="inputPress" type="number" step="0.1" value="1013"></label>
+      </div>
+
+      <div class="form-actions">
+        <button id="fromSensorsBtn" class="btn small">Usar lecturas actuales</button>
+        <button id="analyzeBtn" class="btn small ghost">Analizar</button>
+      </div>
+
+      <div class="result-block">
+        <div><strong>Secuencia:</strong> <span id="generatedSeq">--</span></div>
+        <div><strong>Resultado:</strong> <span id="dfaResult">--</span></div>
+        <div id="dfaExplain" class="small muted"></div>
+      </div>
+
+      <h3 class="small muted">Autómata visual</h3>
+      <div class="dfa-wrap">
+        <svg id="dfaSvg" viewBox="0 0 600 140" class="dfa" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+            </marker>
+          </defs>
+
+          <g id="s_q0" class="state"><circle cx="60" cy="70" r="28"/><text x="60" y="75" text-anchor="middle">q0</text></g>
+          <g id="s_q1" class="state"><circle cx="220" cy="70" r="28"/><text x="220" y="75" text-anchor="middle">q1</text></g>
+          <g id="s_q2" class="state"><circle cx="380" cy="70" r="28"/><text x="380" y="75" text-anchor="middle">q2</text></g>
+          <g id="s_qacc" class="state accept"><circle cx="520" cy="70" r="32"/><text x="520" y="75" text-anchor="middle">q_accept</text></g>
+
+          <line id="l_q0_q1" x1="88" y1="70" x2="192" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="140" y="60" text-anchor="middle">t</text>
+
+          <line id="l_q1_q2" x1="248" y1="70" x2="352" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="300" y="60" text-anchor="middle">t</text>
+
+          <line id="l_q2_qacc" x1="408" y1="70" x2="488" y2="70" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="448" y="60" text-anchor="middle">h</text>
+        </svg>
+      </div>
+    </aside>
   </main>
 
-  <footer>
-    <p>ENMA Predict — Proyecto Estación Meteorológica ENMA 2025</p>
+  <footer class="site-footer">
+    <p>ENMA Predict — Predicción Estación ENMA</p>
   </footer>
 
   <script src="script.js" defer></script>
